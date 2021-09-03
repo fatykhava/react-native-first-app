@@ -1,21 +1,49 @@
-import { StatusBar } from 'expo-status-bar';
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import Loading from './components/Loading';
+import * as Location from 'expo-location';
+import { Alert } from 'react-native';
+import weatherAPI from './api/api';
+import CoordsType from './types/types';
+import Weather from './components/Weather';
+import { WeatherResponseType } from './types/types';
 
-export default function App() {
+const App = () => {
+  let [coords, setCoords] = useState<CoordsType | null>(null);
+  let [isLoading, setIsLoading] = useState(true);
+  let [weaterData, setWeatherData] = useState<WeatherResponseType | null>(null);
+
+  useEffect(() => {
+    getWeather();
+  }, []);
+
+  const getWeather = async () => {
+    try {
+      await getLocation();
+
+      if (coords?.latitude) {
+        const weatherData = await weatherAPI.getCurrentWeatherData(coords.latitude, coords.longitude);
+        setWeatherData(weatherData);
+        setIsLoading(false);
+      }
+    } catch {
+      Alert.alert('Sorry', 'Error!!!');
+    }
+  }
+
+  const getLocation = async () => {
+    await Location.requestForegroundPermissionsAsync();
+    const { coords: { latitude, longitude } } = await Location.getCurrentPositionAsync({ });
+    setCoords({ latitude, longitude });
+  }
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    isLoading
+      ? <Loading />
+      : <Weather temp={weaterData?.main.temp ? Math.round(weaterData.main.temp) : 0}
+        condition={weaterData?.weather[0].main || ''} 
+        conditionDescription={weaterData?.weather[0].description || ''} 
+        weatherId={weaterData?.weather[0].id || 801}/>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default App;
